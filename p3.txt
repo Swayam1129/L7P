@@ -1,7 +1,36 @@
 Hash table:
+Memory - only stores entries for entities that actually have the component, so it's good if
+components are rare. But each entry has extra overhead (nodes, pointers, empty buckets), so
+per entry it costs more than a plain array.
+Speed - O(1) on average, O(N) worst case if there are a lot of collisions. Not cache friendly
+because of hashing and following pointers to nodes all over memory. Also no ordering.
+Maintenance - easy. Adding/removing an entity or component is O(1) avg and only changes that
+one map. Sometimes a rehash makes one insert slow.
 
 Map:
+Memory - also only stores what exists, but every node has the key, value, child pointers and
+colour/balance info, so even more overhead than the hash table.
+Speed - O(log n) for everything, and that is guaranteed (no bad worst case). But every level
+of the tree is a jump to some other place in memory, so it's the worst for cache and probably
+the slowest one here. Good thing is the keys are sorted so you can go through entities in order.
+Maintenance - easy like the hash table, insert/erase is O(log n) and only touches one map.
 
-Sparse mapping 1:
+Sparse mapping 1 ([N][K]):
+Memory - always N*K ints even if most of them are -1, so wasteful when components are sparse.
+No extra overhead per entry though, so if most entities have most components it's actually
+the cheapest.
+Speed - O(1), just two indexes, no hashing. All K components of one entity are next to each
+other so getting everything for one entity is very cache friendly. Going through one component
+type for all entities skips K ints each time, so less cache friendly for that.
+Maintenance - new entity is just push_back an array of -1s. Adding/removing a component is just
+changing one value. Removing an entity leaves a gap (or you have to reuse IDs), since the
+entity ID is the index.
 
-Sparse mapping 2:
+Sparse mapping 2 ([K][N]):
+Memory - same N*K ints (plus K vectors), same waste when sparse.
+Speed - O(1), two indexes. Now one component type is all together in memory, so looping over
+all entities for one component (which is what systems usually do) is really cache friendly.
+Getting all K components of one entity means looking in K different vectors though.
+Maintenance - adding an entity means push_back on all K vectors, and they all have to stay the
+same size. Adding/removing a component is one write. Removing an entity has the same gap/ID
+reuse problem as mapping 1.
